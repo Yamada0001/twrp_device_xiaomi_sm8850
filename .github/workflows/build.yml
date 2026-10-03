@@ -76,7 +76,7 @@ jobs:
       run: |
         export DEBIAN_FRONTEND=noninteractive
         sudo apt-get update
-        sudo apt-get install -y repo
+        sudo apt-get install -y repo ccache bc bison build-essential curl flex g++-multilib gcc-multilib git-lfs imagemagick libncurses5-dev libssl-dev libxml2-utils lz4 openjdk-17-jdk python3 rsync schedtool squashfs-tools unzip zip zstd
         git config --global user.name ${{ github.actor }}
         git config --global user.email ${{ github.actor }}@users.noreply.github.com
 
@@ -84,7 +84,7 @@ jobs:
       uses: actions/cache/restore@v4
       with:
         path: .repo
-        key: twrp-repo-${{ github.event.inputs.TWRP_MANIFEST_BRANCH }}-${{ github.run_id }}
+        key: twrp-repo-${{ github.event.inputs.TWRP_MANIFEST_BRANCH }}-v1
         restore-keys: |
           twrp-repo-${{ github.event.inputs.TWRP_MANIFEST_BRANCH }}-
 
@@ -107,7 +107,7 @@ jobs:
       uses: actions/cache@v4
       with:
         path: .repo
-        key: twrp-repo-${{ github.event.inputs.TWRP_MANIFEST_BRANCH }}-${{ github.run_id }}
+        key: twrp-repo-${{ github.event.inputs.TWRP_MANIFEST_BRANCH }}-v1
 
     - name: Setup device
       run: |
@@ -136,7 +136,9 @@ jobs:
         if [ -z "$lunch_target" ]; then
           lunch_target='${{ github.event.inputs.DEVICE_NAME }}'
         fi
+        echo "Using lunch target: twrp_${lunch_target}"
         lunch "twrp_${lunch_target}"
+        get_build_var TARGET_PRODUCT
         m ${{ github.event.inputs.BUILD_PARTITION }}image -j${BUILD_JOBS}
         mv out/target/product/${{ github.event.inputs.DEVICE_NAME }}/${{ github.event.inputs.BUILD_PARTITION }}.img out/target/product/${{ github.event.inputs.DEVICE_NAME }}/TWRP-3.7.1-16-${{ github.event.inputs.DEVICE_NAME }}-${{ env.BUILD_DATE }}.img
 
