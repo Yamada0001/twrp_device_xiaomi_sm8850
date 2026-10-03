@@ -80,21 +80,34 @@ jobs:
         git config --global user.name ${{ github.actor }}
         git config --global user.email ${{ github.actor }}@users.noreply.github.com
 
+    - name: Restore repo cache
+      uses: actions/cache/restore@v4
+      with:
+        path: .repo
+        key: twrp-repo-${{ github.event.inputs.TWRP_MANIFEST_BRANCH }}-${{ github.run_id }}
+        restore-keys: |
+          twrp-repo-${{ github.event.inputs.TWRP_MANIFEST_BRANCH }}-
+
     - name: Sync source
       run: |
         set -euo pipefail
-        repo init -u ${{ github.event.inputs.TWRP_MANIFEST_URL }} -b ${{ github.event.inputs.TWRP_MANIFEST_BRANCH }} --depth=1
+        manifest_url='${{ github.event.inputs.TWRP_MANIFEST_URL }}'
+        manifest_url="${manifest_url//\&amp;/\&}"
+        manifest_url="${manifest_url#\[}"
+        manifest_url="${manifest_url%%\]*}"
+        repo init -u "$manifest_url" -b '${{ github.event.inputs.TWRP_MANIFEST_BRANCH }}' --depth=1
         manifest_hash=$(sha256sum .repo/manifests/default.xml | cut -d' ' -f1)
         echo "MANIFEST_HASH=${manifest_hash}" >> "$GITHUB_ENV"
+        (while sleep 30; do echo "repo sync still running: $(date -u +%T)"; done) &
+        heartbeat=$!
+        trap 'kill "$heartbeat" 2>/dev/null || true' EXIT
         repo sync -c -j${BUILD_JOBS} --no-clone-bundle --no-tags --optimized-fetch --fail-fast
 
-    - name: Cache repo objects
+    - name: Save repo cache
       uses: actions/cache@v4
       with:
         path: .repo
-        key: twrp-${{ env.MANIFEST_HASH }}-${{ github.event.inputs.TWRP_MANIFEST_BRANCH }}
-        restore-keys: |
-          twrp-${{ env.MANIFEST_HASH }}-
+        key: twrp-repo-${{ github.event.inputs.TWRP_MANIFEST_BRANCH }}-${{ github.run_id }}
 
     - name: Setup device
       run: |
