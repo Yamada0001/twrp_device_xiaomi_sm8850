@@ -46,7 +46,7 @@ jobs:
       USE_CCACHE: 1
       CCACHE_DIR: ${{ github.workspace }}/.ccache
       CCACHE_MAXSIZE: 10G
-      BUILD_JOBS: 12
+      BUILD_JOBS: 4
       DEVICE_PATH_INPUT: ${{ github.event.inputs.DEVICE_PATH }}
       DEVICE_NAME_INPUT: ${{ github.event.inputs.DEVICE_NAME }}
       LUNCH_INPUT: ${{ github.event.inputs.LUNCH_TARGET }}
@@ -88,6 +88,8 @@ jobs:
     - name: Configure build swap
       run: |
         set -euo pipefail
+        sudo rm -rf /usr/local/lib/android/sdk/ndk /usr/share/dotnet /opt/ghc 2>/dev/null || true
+        df -h
         sudo fallocate -l 8G /mnt/build.swap
         sudo chmod 600 /mnt/build.swap
         sudo mkswap /mnt/build.swap
@@ -127,7 +129,6 @@ jobs:
       uses: actions/cache/restore@v4
       with:
         path: |
-          out
           .ccache
           .soong_cache
         key: twrp-build-${{ github.event.inputs.DEVICE_NAME }}-${{ github.event.inputs.DEVICE_TREE_BRANCH }}-v1
@@ -197,7 +198,6 @@ jobs:
       uses: actions/cache@v4
       with:
         path: |
-          out
           .ccache
           .soong_cache
         key: twrp-build-${{ github.event.inputs.DEVICE_NAME }}-${{ github.event.inputs.DEVICE_TREE_BRANCH }}-v1
