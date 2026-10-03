@@ -153,7 +153,7 @@ jobs:
         set -eo pipefail
         set -x
         source build/envsetup.sh
-        lunch "twrp_${LUNCH_TARGET_RESOLVED}-eng"
+        lunch "twrp_${LUNCH_TARGET_RESOLVED}"
         target_product="$(get_build_var TARGET_PRODUCT)"
         test "$target_product" = "twrp_${LUNCH_TARGET_RESOLVED}"
         echo "TARGET_PRODUCT=$target_product"
@@ -164,7 +164,7 @@ jobs:
         set -eo pipefail
         set -x
         source build/envsetup.sh
-        lunch "twrp_${LUNCH_TARGET_RESOLVED}-eng"
+        lunch "twrp_${LUNCH_TARGET_RESOLVED}"
         m "${BUILD_PARTITION_INPUT}image" -j${BUILD_JOBS}
         mv "out/target/product/${DEVICE_NAME_INPUT}/${BUILD_PARTITION_INPUT}.img" "out/target/product/${DEVICE_NAME_INPUT}/TWRP-3.7.1-16-${DEVICE_NAME_INPUT}-${BUILD_DATE}.img"
 
