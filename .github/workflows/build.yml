@@ -46,7 +46,8 @@ jobs:
       USE_CCACHE: 1
       CCACHE_DIR: ${{ github.workspace }}/.ccache
       CCACHE_MAXSIZE: 10G
-      BUILD_JOBS: 4
+      SYNC_JOBS: 12
+      BUILD_JOBS: 2
       DEVICE_PATH_INPUT: ${{ github.event.inputs.DEVICE_PATH }}
       DEVICE_NAME_INPUT: ${{ github.event.inputs.DEVICE_NAME }}
       LUNCH_INPUT: ${{ github.event.inputs.LUNCH_TARGET }}
@@ -117,7 +118,19 @@ jobs:
         (while sleep 30; do echo "repo sync still running: $(date -u +%T)"; done) &
         heartbeat=$!
         trap 'kill "$heartbeat" 2>/dev/null || true' EXIT
-        repo sync -c -j${BUILD_JOBS} --no-clone-bundle --no-tags --optimized-fetch --fail-fast
+        repo sync -c -j${SYNC_JOBS} --no-clone-bundle --no-tags --optimized-fetch --fail-fast
+
+    - name: Reclaim memory after source sync
+      run: |
+        set -euo pipefail
+        sync
+        sudo sysctl -w vm.drop_caches=3 || true
+        if sudo swapon --show=NAME --noheadings | grep -q '^/mnt/build.swap$'; then
+          sudo swapoff /mnt/build.swap || true
+          sudo swapon /mnt/build.swap || true
+        fi
+        free -h
+        df -h
 
     - name: Save repo cache
       uses: actions/cache@v4
