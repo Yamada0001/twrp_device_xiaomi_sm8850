@@ -39,6 +39,7 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 360
     permissions:
       contents: write
     env:
@@ -113,6 +114,14 @@ jobs:
         path: .repo
         key: twrp-repo-${{ github.event.inputs.TWRP_MANIFEST_BRANCH }}-v1
 
+    - name: Restore build output cache
+      uses: actions/cache/restore@v4
+      with:
+        path: |
+          out
+          .ccache
+        key: twrp-build-${{ github.event.inputs.DEVICE_NAME }}-${{ github.event.inputs.DEVICE_TREE_BRANCH }}-v1
+
     - name: Setup device
       run: |
         git clone ${{ github.event.inputs.DEVICE_TREE_URL }} -b ${{ github.event.inputs.DEVICE_TREE_BRANCH }} device/${{ github.event.inputs.DEVICE_PATH }}
@@ -165,8 +174,20 @@ jobs:
         set -x
         source build/envsetup.sh
         lunch "twrp_${LUNCH_TARGET_RESOLVED}"
+        (while sleep 30; do echo "build still running: $(date -u +%T)"; free -h; done) &
+        heartbeat=$!
+        trap 'kill "$heartbeat" 2>/dev/null || true' EXIT
         m "${BUILD_PARTITION_INPUT}image" -j${BUILD_JOBS}
         mv "out/target/product/${DEVICE_NAME_INPUT}/${BUILD_PARTITION_INPUT}.img" "out/target/product/${DEVICE_NAME_INPUT}/TWRP-3.7.1-16-${DEVICE_NAME_INPUT}-${BUILD_DATE}.img"
+
+    - name: Save build output cache
+      if: always()
+      uses: actions/cache@v4
+      with:
+        path: |
+          out
+          .ccache
+        key: twrp-build-${{ github.event.inputs.DEVICE_NAME }}-${{ github.event.inputs.DEVICE_TREE_BRANCH }}-v1
 
     - name: Upload to Release
       uses: softprops/action-gh-release@v2
