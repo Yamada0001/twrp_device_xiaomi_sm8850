@@ -89,7 +89,7 @@ jobs:
       uses: actions/cache/restore@v4
       with:
         path: .repo
-        key: twrp-repo-${{ github.event.inputs.TWRP_MANIFEST_BRANCH }}-v1
+        key: twrp-repo-${{ github.event.inputs.TWRP_MANIFEST_BRANCH }}-${{ github.run_id }}
         restore-keys: |
           twrp-repo-${{ github.event.inputs.TWRP_MANIFEST_BRANCH }}-
 
@@ -112,7 +112,7 @@ jobs:
       uses: actions/cache@v4
       with:
         path: .repo
-        key: twrp-repo-${{ github.event.inputs.TWRP_MANIFEST_BRANCH }}-v1
+        key: twrp-repo-${{ github.event.inputs.TWRP_MANIFEST_BRANCH }}-${{ github.run_id }}
 
     - name: Restore build output cache
       uses: actions/cache/restore@v4
