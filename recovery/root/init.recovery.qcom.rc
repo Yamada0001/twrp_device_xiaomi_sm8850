@@ -75,6 +75,9 @@ on property:twrp.adsp.ready=true && property:vendor.sys.listeners.registered=tru
 
 on property:twrp.variant.files_copied=1
     start odm.vibratorfeature-hal-service
+
+on property:twrp.variant.files_copied=1 && property:twrp.modules.loaded=true
+    # The Synaptics driver and firmware must be ready before touch_report probes.
     start odm.touch_report
 
 on property:twrp.variant.files_copied=1 && property:ro.twrp.weaver=nxp

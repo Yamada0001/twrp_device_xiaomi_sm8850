@@ -102,6 +102,8 @@ TW_INCLUDE_CRYPTO_FBE := true
 TW_INCLUDE_FBE_METADATA_DECRYPT := true
 BOARD_USES_METADATA_PARTITION := true
 TW_INCLUDE_OMAPI := true
+# Xiaomi touch nodes are created with restrictive permissions on SM8850.
+TW_XIAOMI_TOUCH_PERMISSION_FIX := true
 TW_USE_FSCRYPT_POLICY := 2
 PLATFORM_VERSION := 99.87.36
 PLATFORM_VERSION_LAST_STABLE := $(PLATFORM_VERSION)
@@ -143,6 +145,8 @@ TW_INPUT_BLACKLIST := "hbtp_vm"
 TW_BRIGHTNESS_PATH := "/sys/class/backlight/panel0-backlight/brightness"
 TW_MAX_BRIGHTNESS := 2047
 TW_EXTRA_LANGUAGES := true
+# Default to Simplified Chinese on first boot.
+TW_DEFAULT_LANGUAGE := zh_CN
 TW_DEFAULT_BRIGHTNESS := 250
 TW_EXCLUDE_APEX := true
 TW_STATUS_ICONS_ALIGN := center
