@@ -128,12 +128,12 @@ jobs:
       working-directory: device/${{ github.event.inputs.DEVICE_PATH }}
 
     - name: Build TWRP
+      working-directory: ${{ github.workspace }}
       run: |
         set -euo pipefail
-        cd "$GITHUB_WORKSPACE"
         echo "workspace=$PWD"
         test -f build/envsetup.sh
-        test -d device/${{ github.event.inputs.DEVICE_PATH }}
+        test -d "device/${{ github.event.inputs.DEVICE_PATH }}"
         source build/envsetup.sh
         export CCACHE_EXEC="$(command -v ccache)"
         lunch_target="${{ github.event.inputs.LUNCH_TARGET || github.event.inputs.DEVICE_NAME }}"
@@ -141,9 +141,10 @@ jobs:
           lunch_target='${{ github.event.inputs.DEVICE_NAME }}'
         fi
         echo "Using lunch target: twrp_${lunch_target}"
-        lunch "twrp_${lunch_target}" 2>&1 | tee /tmp/lunch.log
-        grep -q "TARGET_PRODUCT=twrp_${lunch_target}" /tmp/lunch.log
-        get_build_var TARGET_PRODUCT 2>&1 | tee /tmp/target.log
+        lunch "twrp_${lunch_target}-eng"
+        target_product="$(get_build_var TARGET_PRODUCT)"
+        test "$target_product" = "twrp_${lunch_target}"
+        echo "TARGET_PRODUCT=$target_product"
         m ${{ github.event.inputs.BUILD_PARTITION }}image -j${BUILD_JOBS}
         mv out/target/product/${{ github.event.inputs.DEVICE_NAME }}/${{ github.event.inputs.BUILD_PARTITION }}.img out/target/product/${{ github.event.inputs.DEVICE_NAME }}/TWRP-3.7.1-16-${{ github.event.inputs.DEVICE_NAME }}-${{ env.BUILD_DATE }}.img
 
