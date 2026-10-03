@@ -132,7 +132,11 @@ jobs:
         set -euo pipefail
         source build/envsetup.sh
         export CCACHE_EXEC="$(command -v ccache)"
-        lunch twrp_${{ env.LUNCH_TARGET }}
+        lunch_target='${{ github.event.inputs.LUNCH_TARGET }}'
+        if [ -z "$lunch_target" ]; then
+          lunch_target='${{ github.event.inputs.DEVICE_NAME }}'
+        fi
+        lunch "twrp_${lunch_target}"
         m ${{ github.event.inputs.BUILD_PARTITION }}image -j${BUILD_JOBS}
         mv out/target/product/${{ github.event.inputs.DEVICE_NAME }}/${{ github.event.inputs.BUILD_PARTITION }}.img out/target/product/${{ github.event.inputs.DEVICE_NAME }}/TWRP-3.7.1-16-${{ github.event.inputs.DEVICE_NAME }}-${{ env.BUILD_DATE }}.img
 
