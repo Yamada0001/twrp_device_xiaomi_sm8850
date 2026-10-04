@@ -45,12 +45,11 @@ jobs:
     env:
       USE_CCACHE: 1
       CCACHE_DIR: ${{ github.workspace }}/.ccache
-      CCACHE_MAXSIZE: 10G
+      # Keep compiler reuse without allowing the cache to consume the runner disk.
+      CCACHE_MAXSIZE: 6G
       SYNC_JOBS: 12
-      # Keep parallelism below the OOM point on the hosted runner.  Six jobs
-      # is the user's known upper bound; use five to leave headroom for Soong
-      # and the recovery image packer while still being materially faster.
-      BUILD_JOBS: 3
+      # Four Ninja jobs are a controlled increase; Soong bootstrap remains single-threaded.
+      BUILD_JOBS: 4
       DEVICE_PATH_INPUT: ${{ github.event.inputs.DEVICE_PATH }}
       DEVICE_NAME_INPUT: ${{ github.event.inputs.DEVICE_NAME }}
       LUNCH_INPUT: ${{ github.event.inputs.LUNCH_TARGET }}
@@ -92,7 +91,9 @@ jobs:
     - name: Configure build swap
       run: |
         set -euo pipefail
-        sudo rm -rf /usr/local/lib/android/sdk/ndk /usr/share/dotnet /opt/ghc 2>/dev/null || true
+        sudo rm -rf /usr/local/lib/android/sdk/ndk /usr/share/dotnet /opt/ghc /usr/local/share/boost 2>/dev/null || true
+        sudo apt-get clean
+        sudo rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/* 2>/dev/null || true
         df -h
         sudo fallocate -l 12G /mnt/build.swap
         sudo chmod 600 /mnt/build.swap
@@ -106,13 +107,15 @@ jobs:
         # Never let a future edit accidentally exceed the memory-safe limit.
         cpus=$(nproc)
         jobs=${BUILD_JOBS}
-        if [ "$jobs" -gt 3 ]; then jobs=3; fi
+        if [ "$jobs" -gt 4 ]; then jobs=4; fi
         if [ "$jobs" -gt "$cpus" ]; then jobs="$cpus"; fi
         echo "BUILD_JOBS=$jobs" >> "$GITHUB_ENV"
         echo "Using $jobs build jobs on $cpus CPUs"
         echo "SOONG_NUM_THREADS=1" >> "$GITHUB_ENV"
         echo "NINJA_ARGS=-j$jobs" >> "$GITHUB_ENV"
         echo "JAVAC_SERVER=false" >> "$GITHUB_ENV"
+        ccache --max-size="${CCACHE_MAXSIZE}" || true
+        ccache --show-stats || true
 
     - name: Restore repo cache
       uses: actions/cache/restore@v4
@@ -155,13 +158,26 @@ jobs:
         path: .repo
         key: twrp-repo-${{ github.event.inputs.TWRP_MANIFEST_BRANCH }}-${{ github.run_id }}
 
+    - name: Remove repo metadata before build
+      run: |
+        set -euo pipefail
+        # .repo is needed for sync/cache only; keeping it during the build can
+        # consume the same disk needed by out/ and cause late linker failures.
+        rm -rf .repo
+        sudo rm -rf /tmp/* /var/tmp/* 2>/dev/null || true
+        available_kb=$(df --output=avail / | tail -n 1 | tr -d ' ')
+        echo "Available disk: $((available_kb / 1024 / 1024)) GiB"
+        if [ "$available_kb" -lt 20971520 ]; then
+          echo "ERROR: less than 20 GiB remains before the Android build" >&2
+          exit 1
+        fi
+        df -h /
+
     - name: Restore build output cache
       uses: actions/cache/restore@v4
       with:
-        path: |
-          .ccache
-          .soong_cache
-        key: twrp-build-${{ github.event.inputs.DEVICE_NAME }}-${{ github.event.inputs.DEVICE_TREE_BRANCH }}-v1
+        path: .ccache
+        key: twrp-build-${{ github.event.inputs.DEVICE_NAME }}-${{ github.event.inputs.DEVICE_TREE_BRANCH }}-v2
 
     - name: Setup device
       run: |
@@ -221,8 +237,6 @@ jobs:
         (while sleep 30; do echo "build still running: $(date -u +%T)"; free -h; done) &
         heartbeat=$!
         trap 'kill "$heartbeat" 2>/dev/null || true' EXIT
-        mkdir -p .soong_cache
-        ln -sfn "$PWD/out/soong" .soong_cache/soong
         m "${BUILD_PARTITION_INPUT}image" -j"${BUILD_JOBS}"
         mv "out/target/product/${DEVICE_NAME_INPUT}/${BUILD_PARTITION_INPUT}.img" "out/target/product/${DEVICE_NAME_INPUT}/TWRP-3.7.1-16-${DEVICE_NAME_INPUT}-${BUILD_DATE}.img"
 
@@ -230,10 +244,8 @@ jobs:
       if: always()
       uses: actions/cache@v4
       with:
-        path: |
-          .ccache
-          .soong_cache
-        key: twrp-build-${{ github.event.inputs.DEVICE_NAME }}-${{ github.event.inputs.DEVICE_TREE_BRANCH }}-v1
+        path: .ccache
+        key: twrp-build-${{ github.event.inputs.DEVICE_NAME }}-${{ github.event.inputs.DEVICE_TREE_BRANCH }}-v2
 
     - name: Upload to Release
       uses: softprops/action-gh-release@v2
