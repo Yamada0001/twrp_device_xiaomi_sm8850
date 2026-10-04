@@ -35,6 +35,9 @@ on early-fs
 on fs
     wait /dev/block/platform/soc/${ro.boot.bootdevice}
     symlink /dev/block/platform/soc/${ro.boot.bootdevice} /dev/block/bootdevice
+    # TWRP prepares logical partitions during startup. Ensure the physical
+    # super node has been published before fs_mgr reads its metadata.
+    wait /dev/block/bootdevice/by-name/super 10
     write /proc/sys/kernel/firmware_config/force_sysfs_fallback 1
     chmod 0660 /dev/qseecom
     chown system drmrpc /dev/qseecom
