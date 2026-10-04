@@ -74,6 +74,10 @@ on property:twrp.adsp.ready=true && property:vendor.sys.listeners.registered=tru
     start vendor.secure_element
 
 on property:twrp.variant.files_copied=1
+    # Xiaomi touch nodes may be created by the vendor module after recovery
+    # starts. Re-apply permissions after the variant overlay is ready.
+    chmod 0660 /dev/input/event*
+    chown root input /dev/input/event*
     start odm.vibratorfeature-hal-service
 
 on property:twrp.variant.files_copied=1 && property:twrp.modules.loaded=true

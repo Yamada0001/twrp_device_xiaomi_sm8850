@@ -172,8 +172,11 @@ done
 # set -e is on, so an unknown SKU with no overlay would abort the script here
 # and never raise files_copied, leaving weaver, haptics and touch unstarted.
 if [ -d "/odm/variant/$variant/odm" ]; then
-    cp -rf /odm/variant/$variant/odm/* /odm
-    chmod -R 755 /odm/bin/*
+    # Overlay contents are optional across SKUs. Do not abort recovery
+    # startup when a vendor image omits an optional file or directory.
+    cp -rf /odm/variant/$variant/odm/. /odm/ 2>/dev/null || \
+        log "Warning: failed to copy all $variant overlay files"
+    chmod -R 755 /odm/bin/* 2>/dev/null || true
 else
     log "No overlay for $variant, keeping the base odm"
 fi

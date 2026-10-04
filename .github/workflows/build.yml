@@ -47,7 +47,10 @@ jobs:
       CCACHE_DIR: ${{ github.workspace }}/.ccache
       CCACHE_MAXSIZE: 10G
       SYNC_JOBS: 12
-      BUILD_JOBS: 2
+      # Keep parallelism below the OOM point on the hosted runner.  Six jobs
+      # is the user's known upper bound; use five to leave headroom for Soong
+      # and the recovery image packer while still being materially faster.
+      BUILD_JOBS: 5
       DEVICE_PATH_INPUT: ${{ github.event.inputs.DEVICE_PATH }}
       DEVICE_NAME_INPUT: ${{ github.event.inputs.DEVICE_NAME }}
       LUNCH_INPUT: ${{ github.event.inputs.LUNCH_TARGET }}
@@ -96,6 +99,17 @@ jobs:
         sudo mkswap /mnt/build.swap
         sudo swapon /mnt/build.swap
         free -h
+
+    - name: Configure build resources
+      run: |
+        set -euo pipefail
+        # Never let a future edit accidentally exceed the memory-safe limit.
+        cpus=$(nproc)
+        jobs=${BUILD_JOBS}
+        if [ "$jobs" -gt 5 ]; then jobs=5; fi
+        if [ "$jobs" -gt "$cpus" ]; then jobs="$cpus"; fi
+        echo "BUILD_JOBS=$jobs" >> "$GITHUB_ENV"
+        echo "Using $jobs build jobs on $cpus CPUs"
 
     - name: Restore repo cache
       uses: actions/cache/restore@v4
@@ -203,7 +217,7 @@ jobs:
         trap 'kill "$heartbeat" 2>/dev/null || true' EXIT
         mkdir -p .soong_cache
         ln -sfn "$PWD/out/soong" .soong_cache/soong
-        m "${BUILD_PARTITION_INPUT}image" -j${BUILD_JOBS}
+        m "${BUILD_PARTITION_INPUT}image" -j"${BUILD_JOBS}"
         mv "out/target/product/${DEVICE_NAME_INPUT}/${BUILD_PARTITION_INPUT}.img" "out/target/product/${DEVICE_NAME_INPUT}/TWRP-3.7.1-16-${DEVICE_NAME_INPUT}-${BUILD_DATE}.img"
 
     - name: Save build output cache
