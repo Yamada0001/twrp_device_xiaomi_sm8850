@@ -59,6 +59,17 @@ on post-fs
 on boot
     setprop sys.usb.config adb
 
+on boot && property:ro.boot.slot_suffix=_b
+    # Super exposes the active logical group as *_a while recovery boots
+    # from slot B on this device. Mount the stock vendor stack before HALs
+    # such as Weaver and Gatekeeper are started.
+    mkdir /vendor 0755 root root
+    mkdir /odm 0755 root root
+    mkdir /vendor_dlkm 0755 root root
+    mount erofs /dev/block/mapper/vendor_a /vendor ro
+    mount erofs /dev/block/mapper/odm_a /odm ro
+    mount erofs /dev/block/mapper/vendor_dlkm_a /vendor_dlkm ro
+
 
 on property:twrp.modules.loaded=true
     # Mount firmware
