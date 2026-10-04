@@ -50,7 +50,7 @@ jobs:
       # Keep parallelism below the OOM point on the hosted runner.  Six jobs
       # is the user's known upper bound; use five to leave headroom for Soong
       # and the recovery image packer while still being materially faster.
-      BUILD_JOBS: 5
+      BUILD_JOBS: 3
       DEVICE_PATH_INPUT: ${{ github.event.inputs.DEVICE_PATH }}
       DEVICE_NAME_INPUT: ${{ github.event.inputs.DEVICE_NAME }}
       LUNCH_INPUT: ${{ github.event.inputs.LUNCH_TARGET }}
@@ -94,7 +94,7 @@ jobs:
         set -euo pipefail
         sudo rm -rf /usr/local/lib/android/sdk/ndk /usr/share/dotnet /opt/ghc 2>/dev/null || true
         df -h
-        sudo fallocate -l 4G /mnt/build.swap
+        sudo fallocate -l 12G /mnt/build.swap
         sudo chmod 600 /mnt/build.swap
         sudo mkswap /mnt/build.swap
         sudo swapon /mnt/build.swap
@@ -106,10 +106,13 @@ jobs:
         # Never let a future edit accidentally exceed the memory-safe limit.
         cpus=$(nproc)
         jobs=${BUILD_JOBS}
-        if [ "$jobs" -gt 5 ]; then jobs=5; fi
+        if [ "$jobs" -gt 3 ]; then jobs=3; fi
         if [ "$jobs" -gt "$cpus" ]; then jobs="$cpus"; fi
         echo "BUILD_JOBS=$jobs" >> "$GITHUB_ENV"
         echo "Using $jobs build jobs on $cpus CPUs"
+        echo "SOONG_NUM_THREADS=1" >> "$GITHUB_ENV"
+        echo "NINJA_ARGS=-j$jobs" >> "$GITHUB_ENV"
+        echo "JAVAC_SERVER=false" >> "$GITHUB_ENV"
 
     - name: Restore repo cache
       uses: actions/cache/restore@v4
@@ -201,6 +204,9 @@ jobs:
         set -x
         source build/envsetup.sh
         lunch "twrp_${LUNCH_TARGET_RESOLVED}"
+        export SOONG_NUM_THREADS=1
+        export NINJA_ARGS="-j${BUILD_JOBS}"
+        export JAVAC_SERVER=false
         target_product="$(get_build_var TARGET_PRODUCT)"
         test "$target_product" = "twrp_${LUNCH_TARGET_RESOLVED}"
         echo "TARGET_PRODUCT=$target_product"
