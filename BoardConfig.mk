@@ -78,6 +78,9 @@ BOARD_RECOVERYIMAGE_PARTITION_SIZE := 104857600
 
 # Dynamic Partition
 BOARD_SUPER_PARTITION_SIZE := 13421772800
+# The dynamic partition metadata lives in the physical super partition.
+# Without this, TWRP cannot create logical vendor/odm/vendor_dlkm devices.
+BOARD_SUPER_PARTITION_METADATA_DEVICE := super
 BOARD_SUPER_PARTITION_GROUPS := qti_dynamic_partitions
 BOARD_QTI_DYNAMIC_PARTITIONS_SIZE := $(shell echo $$(($(BOARD_SUPER_PARTITION_SIZE) - 10485760)))
 BOARD_QTI_DYNAMIC_PARTITIONS_PARTITION_LIST := system system_ext product vendor vendor_dlkm odm system_dlkm
@@ -101,7 +104,10 @@ TW_INCLUDE_CRYPTO := true
 TW_INCLUDE_CRYPTO_FBE := true
 TW_INCLUDE_FBE_METADATA_DECRYPT := true
 BOARD_USES_METADATA_PARTITION := true
+# SM8850 uses Qualcomm's wrapped-key/keymaster implementation for FBE.
+BOARD_USES_QCOM_FBE_DECRYPTION := true
 TW_INCLUDE_OMAPI := true
+TW_OMAPI_UUID := 534552454144595f48414c5f55554944
 # Xiaomi touch nodes are created with restrictive permissions on SM8850.
 TW_XIAOMI_TOUCH_PERMISSION_FIX := true
 TW_USE_FSCRYPT_POLICY := 2
@@ -155,5 +161,9 @@ TW_SUPPORT_INPUT_AIDL_HAPTICS_FIX_OFF := true
 TW_USE_SERIALNO_PROPERTY_FOR_DEVICE_ID := true
 TW_LOAD_VENDOR_MODULES := "adsp_loader_dlkm.ko rproc_qcom_common.ko q6_dlkm.ko qcom_q6v5.ko qcom_q6v5_pas.ko qcom_sysmon.ko synaptics_tcm2.ko nt38773_touch.ko focaltech_touch_3683.ko focaltech_touch_3685g.ko focaltech_touch_3685g_1.ko nxp-nci.ko stm_st54se_gpio.ko stm_nfc_i2c.ko qcom-hv-haptics.ko cs40l26-i2c.ko"
 TW_LOAD_VENDOR_MODULES_EXCLUDE_GKI := true
+# Load touch and crypto-related modules from the vendor_boot ramdisk before
+# attempting to mount dynamic vendor partitions.
+TW_LOAD_PREBUILT_MODULES_AT_FIRST := true
+TW_LOAD_VENDOR_BOOT_MODULES := true
 TW_CUSTOM_CPU_TEMP_PATH := "/sys/class/thermal/thermal_zone25/temp" # CPU-0-0-0
 TW_BACKUP_EXCLUSIONS := /data/fonts,/data/adb/ap,/data/adb/ksu
