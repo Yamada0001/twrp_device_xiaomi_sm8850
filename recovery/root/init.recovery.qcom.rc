@@ -77,7 +77,6 @@ on property:twrp.modules.loaded=true
 
 on property:twrp.adsp.ready=true && property:vendor.sys.listeners.registered=true
     start vendor.health-default
-    start vendor.secure_element
 
 on property:twrp.variant.files_copied=1
     # Xiaomi touch nodes may be created by the vendor module after recovery
@@ -91,9 +90,15 @@ on property:twrp.variant.files_copied=1 && property:twrp.modules.loaded=true
     start odm.touch_report
 
 on property:twrp.stock_vendor_mounted=1 && property:ro.twrp.weaver=nxp
+    start vendor.qseecomd
+    start vendor.secure_element
+    sleep 2
     start odm.weaver_nxp
 
 on property:twrp.stock_vendor_mounted=1 && property:ro.twrp.weaver=thales
+    start vendor.qseecomd
+    start vendor.secure_element
+    sleep 2
     start odm.weaver_hal_service
 
 on property:twrp.stock_vendor_mounted=1 && property:ro.twrp.weaver=goodix
