@@ -1,4 +1,4 @@
-on init
+on property:twrp.stock_vendor_mounted=1
     start vendor.keymint
 
 service vendor.keymint /vendor/bin/hw/android.hardware.security.onekeymint-service-qti

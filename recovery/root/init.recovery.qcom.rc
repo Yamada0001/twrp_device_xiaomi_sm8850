@@ -59,16 +59,8 @@ on post-fs
 on boot
     setprop sys.usb.config adb
 
-on boot && property:ro.boot.slot_suffix=_b
-    # Super exposes the active logical group as *_a while recovery boots
-    # from slot B on this device. Mount the stock vendor stack before HALs
-    # such as Weaver and Gatekeeper are started.
-    mkdir /vendor 0755 root root
-    mkdir /odm 0755 root root
-    mkdir /vendor_dlkm 0755 root root
-    mount erofs /dev/block/mapper/vendor_a /vendor ro
-    mount erofs /dev/block/mapper/odm_a /odm ro
-    mount erofs /dev/block/mapper/vendor_dlkm_a /vendor_dlkm ro
+on property:twrp.variant.files_copied=1
+    start twrp.mount-stock-vendor
 
 
 on property:twrp.modules.loaded=true
@@ -98,15 +90,23 @@ on property:twrp.variant.files_copied=1 && property:twrp.modules.loaded=true
     # The Synaptics driver and firmware must be ready before touch_report probes.
     start odm.touch_report
 
-on property:twrp.variant.files_copied=1 && property:ro.twrp.weaver=nxp
+on property:twrp.stock_vendor_mounted=1 && property:ro.twrp.weaver=nxp
     start odm.weaver_nxp
 
-on property:twrp.variant.files_copied=1 && property:ro.twrp.weaver=thales
+on property:twrp.stock_vendor_mounted=1 && property:ro.twrp.weaver=thales
     start odm.weaver_hal_service
 
-on property:twrp.variant.files_copied=1 && property:ro.twrp.weaver=goodix
+on property:twrp.stock_vendor_mounted=1 && property:ro.twrp.weaver=goodix
     start odm.secure_element_hal_service
     start odm.goodix_weaver_hal_service
+
+service twrp.mount-stock-vendor /system/bin/sh /odm/bin/mount-stock-vendor.sh
+    class core
+    user root
+    group root
+    disabled
+    oneshot
+    seclabel u:r:recovery:s0
 
 service vendor.wait-adsp /system/bin/sh /vendor/bin/wait-adsp-ready.sh
     class hal
