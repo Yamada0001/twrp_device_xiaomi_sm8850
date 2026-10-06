@@ -18,7 +18,7 @@ mount_logical() {
     name="$1"
     target="$2"
     mkdir -p "$target"
-    if grep -q "[[:space:]]$target[[:space:]]" /proc/mounts; then
+    if grep -q "[[:space:]]/dev/block/mapper/${name}[[:space:]].*[[:space:]]${target}[[:space:]]" /proc/mounts; then
         return 0
     fi
     wait_for_node "/dev/block/mapper/${name}" || return 1
@@ -27,9 +27,22 @@ mount_logical() {
     mount -t ext4 -o ro "/dev/block/mapper/${name}" "$target" 2>/dev/null
 }
 
-if mount_logical vendor_a /vendor &&
-   mount_logical odm_a /odm &&
-   mount_logical vendor_dlkm_a /vendor_dlkm; then
+slot_suffix="${ro_boot_slot_suffix:-}"
+if [ -z "$slot_suffix" ]; then
+    slot_suffix="$(getprop ro.boot.slot_suffix)"
+fi
+case "$slot_suffix" in
+    _a|_b) ;;
+    *)
+        log -t twrp "invalid boot slot suffix: $slot_suffix"
+        setprop twrp.stock_vendor_mounted 0
+        exit 1
+        ;;
+esac
+
+if mount_logical "vendor${slot_suffix}" /vendor &&
+   mount_logical "odm${slot_suffix}" /odm &&
+   mount_logical "vendor_dlkm${slot_suffix}" /vendor_dlkm; then
     setprop twrp.stock_vendor_mounted 1
 else
     log -t twrp "stock logical vendor stack is unavailable"

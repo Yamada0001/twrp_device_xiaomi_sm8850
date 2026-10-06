@@ -27,6 +27,7 @@
 
 on init
     start vendor.boot-qti
+    setprop persist.sys.timezone Asia/Shanghai
 
 on early-fs
     write /proc/sys/walt/sched_lib_name "recovery,magiskboot,Updater,updater,update_engine_sideload"
@@ -37,7 +38,7 @@ on fs
     symlink /dev/block/platform/soc/${ro.boot.bootdevice} /dev/block/bootdevice
     # TWRP prepares logical partitions during startup. Ensure the physical
     # super node has been published before fs_mgr reads its metadata.
-    wait /dev/block/bootdevice/by-name/super 10
+    wait /dev/block/bootdevice/by-name/super 30
     write /proc/sys/kernel/firmware_config/force_sysfs_fallback 1
     chmod 0660 /dev/qseecom
     chown system drmrpc /dev/qseecom
@@ -85,6 +86,14 @@ on property:twrp.variant.files_copied=1
     chown root input /dev/input/event*
     start odm.vibratorfeature-hal-service
 
+on property:ro.boot.hardware.sku=byron
+    chmod 0660 /dev/input/event*
+    chown root input /dev/input/event*
+
+on property:ro.twrp.unsupported_device=1
+    setprop ro.twrp.device_version "Unsupported device"
+    setprop ro.twrp.unsupported_message "This recovery supports byron and popsicle only"
+
 on property:twrp.variant.files_copied=1 && property:twrp.modules.loaded=true
     # The Synaptics driver and firmware must be ready before touch_report probes.
     start odm.touch_report
@@ -92,18 +101,25 @@ on property:twrp.variant.files_copied=1 && property:twrp.modules.loaded=true
 on property:twrp.stock_vendor_mounted=1 && property:ro.twrp.weaver=nxp
     start vendor.qseecomd
     start vendor.secure_element
-    sleep 2
+    wait /dev/qseecom 5
+    sleep 3
     start odm.weaver_nxp
+    setprop twrp.crypto_services_ready 1
 
 on property:twrp.stock_vendor_mounted=1 && property:ro.twrp.weaver=thales
     start vendor.qseecomd
     start vendor.secure_element
     sleep 2
     start odm.weaver_hal_service
+    setprop twrp.crypto_services_ready 1
 
 on property:twrp.stock_vendor_mounted=1 && property:ro.twrp.weaver=goodix
     start odm.secure_element_hal_service
     start odm.goodix_weaver_hal_service
+    setprop twrp.crypto_services_ready 1
+
+on property:twrp.crypto_services_ready=1
+    setprop twrp.crypto_services_available 1
 
 service twrp.mount-stock-vendor /system/bin/sh /odm/bin/mount-stock-vendor.sh
     class core
