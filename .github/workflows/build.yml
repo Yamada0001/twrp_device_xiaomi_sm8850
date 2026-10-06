@@ -140,6 +140,50 @@ jobs:
         trap 'kill "$heartbeat" 2>/dev/null || true' EXIT
         repo sync -c -j${SYNC_JOBS} --no-clone-bundle --no-tags --optimized-fetch --fail-fast
 
+    - name: Enable LVGL vector graphics
+      run: |
+        set -euo pipefail
+        python3 - <<'PY'
+        from pathlib import Path
+        import re
+
+        roots = [Path("external/lvgl"), Path("bootable/recovery/gui2")]
+        configs = []
+        for root in roots:
+            if root.exists():
+                configs.extend(
+                    path for path in root.rglob("lv_conf.h")
+                    if path.is_file() and "lv_conf_internal.h" not in path.name
+                )
+
+        if not configs:
+            raise SystemExit("Could not find LVGL lv_conf.h")
+
+        updated = []
+        for path in configs:
+            text = path.read_text()
+            missing = []
+            for name, value in (
+                ("LV_USE_SVG", "1"),
+                ("LV_USE_THORVG_INTERNAL", "1"),
+                ("LV_DRAW_HAS_VECTOR_SUPPORT", "1"),
+            ):
+                pattern = rf"(?m)^\s*#\s*define\s+{name}\s+[^\r\n]+"
+                replacement = f"#define {name} {value}"
+                text, count = re.subn(pattern, replacement, text)
+                if count == 0:
+                    missing.append(replacement)
+            if missing:
+                guard_end = list(re.finditer(r"(?m)^\s*#\s*endif\b", text))
+                insert_at = guard_end[-1].start() if guard_end else len(text)
+                text = text[:insert_at] + "\n".join(missing) + "\n" + text[insert_at:]
+            path.write_text(text)
+            updated.append(str(path))
+
+        print("Updated LVGL vector configuration:")
+        print("\n".join(updated))
+        PY
+
     - name: Reclaim memory after source sync
       run: |
         set -euo pipefail
