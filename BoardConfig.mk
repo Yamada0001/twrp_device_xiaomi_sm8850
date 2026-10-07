@@ -77,7 +77,8 @@ BOARD_VENDOR_DLKMIMAGE_FILE_SYSTEM_TYPE := ext4
 BOARD_RECOVERYIMAGE_PARTITION_SIZE := 104857600
 
 # Dynamic Partition
-BOARD_SUPER_PARTITION_SIZE := 13421772800
+# Physical super node size measured from /dev/block/sda33 on byron.
+BOARD_SUPER_PARTITION_SIZE := 14495514624
 # The dynamic partition metadata lives in the physical super partition.
 # Without this, TWRP cannot create logical vendor/odm/vendor_dlkm devices.
 BOARD_SUPER_PARTITION_METADATA_DEVICE := super

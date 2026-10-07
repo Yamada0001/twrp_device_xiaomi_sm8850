@@ -10,7 +10,7 @@ vendor.gatekeeper.disable_spu=true
 vendor.gatekeeper.is_security_level_spu=0
 
 # Reset allocatable space
-ro.dynamic.full_size=13421772800
+ro.dynamic.full_size=14495514624
 
 # USB
 vendor.usb.configfs=1
