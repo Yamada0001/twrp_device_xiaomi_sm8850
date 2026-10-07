@@ -56,11 +56,6 @@
         <fqname>IWeaver/default</fqname>
     </hal>
     <hal format="aidl">
-        <name>android.hardware.weaver</name>
-        <version>2</version>
-        <fqname>IWeaver/default</fqname>
-    </hal>
-    <hal format="aidl">
         <name>vendor.goodix.hardware.secure_element_aidl</name>
         <version>1</version>
         <fqname>IGdxEse/default</fqname>

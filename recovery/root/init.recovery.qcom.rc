@@ -51,6 +51,7 @@ on fs
     wait /dev/block/bootdevice/by-name/persist
     mount ext4 /dev/block/bootdevice/by-name/persist /persist noatime nosuid nodev barrier=1
     mount none /persist /mnt/vendor/persist bind
+    install_keyring
     start vendor.qseecomd
 
 on post-fs
@@ -84,6 +85,24 @@ on property:twrp.variant.files_copied=1
     chmod 0660 /dev/input/event*
     chown root input /dev/input/event*
     start odm.vibratorfeature-hal-service
+
+on property:twrp.stock_vendor_mounted=1 && property:ro.twrp.weaver=nxp
+    start vendor.qseecomd
+    start vendor.keymint
+    start vendor.secure_element
+    wait /dev/qseecom 5
+    sleep 3
+    start odm.weaver_nxp
+
+on property:twrp.stock_vendor_mounted=1 && property:ro.twrp.weaver=thales
+    start vendor.qseecomd
+    start vendor.secure_element
+    sleep 2
+    start odm.weaver_hal_service
+
+on property:twrp.stock_vendor_mounted=1 && property:ro.twrp.weaver=goodix
+    start odm.secure_element_hal_service
+    start odm.goodix_weaver_hal_service
 
 on property:ro.boot.hardware.sku=byron
     chmod 0660 /dev/input/event*
