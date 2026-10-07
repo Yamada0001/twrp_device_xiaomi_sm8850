@@ -6,11 +6,11 @@ on:
       TWRP_MANIFEST_URL:
         description: "TWRP manifest url"
         required: true
-        default: "https://github.com/TWRP-Test/platform_manifest_twrp_aosp"
+        default: "https://github.com/Yamada0001/platform_manifest_twrp_aosp"
       TWRP_MANIFEST_BRANCH:
         description: "TWRP branch"
         required: true
-        default: "twrp-16.0"
+        default: "lvgl"
       DEVICE_TREE_URL:
         description: "Device tree url"
         required: true
