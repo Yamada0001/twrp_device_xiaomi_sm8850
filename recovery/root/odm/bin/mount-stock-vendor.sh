@@ -57,6 +57,20 @@ esac
 if mount_logical "vendor${slot_suffix}" /vendor &&
    mount_logical "odm${slot_suffix}" /odm &&
    mount_logical "vendor_dlkm${slot_suffix}" /vendor_dlkm; then
+    # Start crypto HALs only after their stock libraries and manifests are
+    # visible. This avoids relying on custom init property triggers, which
+    # recovery init rejects on some Android releases.
+    start vendor.qseecomd
+    start vendor.keymint
+    start vendor.secure_element
+    case "$(getprop ro.twrp.weaver)" in
+        nxp) start odm.weaver_nxp ;;
+        thales) start odm.weaver_hal_service ;;
+        goodix)
+            start odm.secure_element_hal_service
+            start odm.goodix_weaver_hal_service
+            ;;
+    esac
     setprop twrp.stock_vendor_mounted 1
 else
     log "stock logical vendor stack is unavailable for slot $slot_suffix"

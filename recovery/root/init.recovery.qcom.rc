@@ -97,21 +97,6 @@ on property:twrp.variant.files_copied=1 && property:twrp.modules.loaded=true
     # The Synaptics driver and firmware must be ready before touch_report probes.
     start odm.touch_report
 
-on property:twrp.stock_vendor_mounted=1 && property:ro.twrp.weaver=nxp
-    start vendor.qseecomd
-    start vendor.keymint
-    start vendor.secure_element
-    start odm.weaver_nxp
-
-on property:twrp.stock_vendor_mounted=1 && property:ro.twrp.weaver=thales
-    start vendor.qseecomd
-    start vendor.secure_element
-    start odm.weaver_hal_service
-
-on property:twrp.stock_vendor_mounted=1 && property:ro.twrp.weaver=goodix
-    start odm.secure_element_hal_service
-    start odm.goodix_weaver_hal_service
-
 service twrp.mount-stock-vendor /system/bin/sh /odm/bin/mount-stock-vendor.sh
     class core
     user root
