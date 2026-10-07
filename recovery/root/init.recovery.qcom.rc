@@ -51,8 +51,6 @@ on fs
     wait /dev/block/bootdevice/by-name/persist
     mount ext4 /dev/block/bootdevice/by-name/persist /persist noatime nosuid nodev barrier=1
     mount none /persist /mnt/vendor/persist bind
-    install_keyring
-    start vendor.qseecomd
 
 on post-fs
     start odm.variant-script
@@ -61,6 +59,11 @@ on boot
     setprop sys.usb.config adb
 
 on property:twrp.variant.files_copied=1
+    start twrp.mount-stock-vendor
+
+# TWRP temporarily mounts/unmounts vendor while reading its fstab. Restore
+# the firmware child mount before a later credential-decryption request.
+on property:twrp.mount_to_decrypt=1
     start twrp.mount-stock-vendor
 
 
@@ -88,16 +91,17 @@ on property:twrp.variant.files_copied=1
 
 on property:twrp.stock_vendor_mounted=1 && property:ro.twrp.weaver=nxp
     start vendor.qseecomd
+
+# A running qseecomd process does not mean its secure-world listeners are ready.
+# Property actions leave init free to bring up recovery/ADB while we wait.
+on property:twrp.stock_vendor_mounted=1 && property:vendor.sys.listeners.registered=true && property:ro.twrp.weaver=nxp
     start vendor.keymint
     start vendor.secure_element
-    wait /dev/qseecom 5
-    sleep 3
     start odm.weaver_nxp
 
 on property:twrp.stock_vendor_mounted=1 && property:ro.twrp.weaver=thales
     start vendor.qseecomd
     start vendor.secure_element
-    sleep 2
     start odm.weaver_hal_service
 
 on property:twrp.stock_vendor_mounted=1 && property:ro.twrp.weaver=goodix

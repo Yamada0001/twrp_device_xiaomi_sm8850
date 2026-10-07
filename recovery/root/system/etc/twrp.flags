@@ -8,11 +8,14 @@
 /system                auto    system                                                             flags=display="system"
 /system_ext            auto    system_ext                                                         flags=display="system_ext"
 /product               auto    product                                                            flags=display="product"
-/vendor                auto    vendor                                                             flags=display="vendor"
+/vendor                auto    vendor                                                             flags=display="vendor";mounttodecrypt
 /vendor_dlkm           auto    vendor_dlkm                                                        flags=display="vendor_dlkm"
 /system_dlkm           auto    system_dlkm                                                        flags=display="system_dlkm"
-/odm                   auto    odm                                                                flags=display="odm"
+/odm                   auto    odm                                                                flags=display="odm";mounttodecrypt
 /mi_ext                auto    mi_ext                                                             flags=display="mi_ext"
+
+# Mount these after /vendor and /odm, before a credential-bearing Weaver read.
+/vendor/firmware_mnt    vfat    /dev/block/bootdevice/by-name/modem                                flags=display="eSE firmware";slotselect;mounttodecrypt;fsflags="ro,uid=1000,gid=1000,dmask=227,fmask=337"
 
 # Metadata/Cache/Misc Properties
 /metadata              f2fs    /dev/block/bootdevice/by-name/metadata                             flags=display="metadata";backup=1

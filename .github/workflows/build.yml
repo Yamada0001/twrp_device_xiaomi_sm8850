@@ -140,6 +140,26 @@ jobs:
         trap 'kill "$heartbeat" 2>/dev/null || true' EXIT
         repo sync -c -j${SYNC_JOBS} --no-clone-bundle --no-tags --optimized-fetch --fail-fast
 
+    - name: Verify decryption source and record revisions
+      run: |
+        set -euo pipefail
+        python3 - <<'PYCODE'
+        import subprocess
+        import xml.etree.ElementTree as ET
+        root = ET.parse(".repo/manifests/twrp-default.xml").getroot()
+        project = next(p for p in root.findall("project") if p.get("path") == "system/vold")
+        expected = project.get("revision", "")
+        actual = subprocess.check_output(["git", "-C", "system/vold", "rev-parse", "HEAD"], text=True).strip()
+        if project.get("name") != "Yamada0001/android_system_vold" or len(expected) != 40 or expected != actual:
+            raise SystemExit("The selected manifest does not pin the expected vold fork/commit")
+        with open("crypto-source-revisions.txt", "w") as f:
+            for path in [".repo/manifests", "system/vold", "system/core", "bootable/recovery", "external/se_omapi"]:
+                revision = subprocess.check_output(["git", "-C", path, "rev-parse", "HEAD"], text=True).strip()
+                f.write(f"{path}: {revision}\n")
+        PYCODE
+        python3 system/vold/tests/recovery_weaver/run_host_tests.py --crypto
+        repo manifest -r -o resolved-manifest.xml
+
     - name: Enable LVGL vector graphics
       run: |
         set -euo pipefail
@@ -225,6 +245,14 @@ jobs:
       run: |
         git clone ${{ github.event.inputs.DEVICE_TREE_URL }} -b ${{ github.event.inputs.DEVICE_TREE_BRANCH }} device/${{ github.event.inputs.DEVICE_PATH }}
 
+    - name: Validate recovery crypto configuration
+      run: |
+        set -euo pipefail
+        python3 "device/${DEVICE_PATH_INPUT}/tests/check_crypto_config.py" --source-root "$PWD"
+        python3 "device/${DEVICE_PATH_INPUT}/tests/test_mount_stock_vendor.py"
+        git -C "device/${DEVICE_PATH_INPUT}" rev-parse HEAD >> crypto-source-revisions.txt
+        cp crypto-source-revisions.txt "device/${DEVICE_PATH_INPUT}/recovery/root/system/etc/crypto-source-revisions.txt"
+
     - name: Generate build info
       run: |
         echo -e "$BUILD_INFO" >> INFO.txt
@@ -294,6 +322,8 @@ jobs:
       with:
         files: | 
           out/target/product/${{ github.event.inputs.DEVICE_NAME }}/TWRP-3.7.1-16-${{ github.event.inputs.DEVICE_NAME }}-${{ env.BUILD_DATE }}.img
+          crypto-source-revisions.txt
+          resolved-manifest.xml
         name: TWRP-3.7.1-16-${{ github.event.inputs.DEVICE_NAME }}-${{ env.BUILD_DATE }}-${{ github.run_id }}
         tag_name: ${{ env.BUILD_DATE }}-${{ github.run_id }}
         body_path: device/${{ github.event.inputs.DEVICE_PATH }}/INFO.txt

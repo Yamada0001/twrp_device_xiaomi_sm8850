@@ -54,11 +54,31 @@ case "$slot_suffix" in
         ;;
 esac
 
-if mount_logical "vendor${slot_suffix}" /vendor &&
-   mount_logical "odm${slot_suffix}" /odm &&
-   mount_logical "vendor_dlkm${slot_suffix}" /vendor_dlkm; then
-    setprop twrp.stock_vendor_mounted 1
-else
-    log "stock logical vendor stack is unavailable for slot $slot_suffix"
-    setprop twrp.stock_vendor_mounted 0
+# Clear stale readiness before repairing mounts after TWRP's vendor probe.
+setprop twrp.stock_vendor_mounted 0
+if ! mount_logical "vendor${slot_suffix}" /vendor ||
+   ! mount_logical "odm${slot_suffix}" /odm; then
+    log "stock vendor/odm unavailable for slot $slot_suffix"
+    exit 1
 fi
+
+# The QTI Secure Element binary loads its TA from this exact stock path.
+# /firmware alone is insufficient. The directory already exists in stock vendor.
+firmware_node="/dev/block/bootdevice/by-name/modem${slot_suffix}"
+if ! grep -q '[[:space:]]/vendor/firmware_mnt[[:space:]]' /proc/mounts; then
+    if ! wait_for_node "$firmware_node" ||
+       ! mount -t vfat -o ro,uid=1000,gid=1000,dmask=227,fmask=337 \
+           "$firmware_node" /vendor/firmware_mnt; then
+        log "cannot mount eSE firmware at /vendor/firmware_mnt"
+        exit 1
+    fi
+fi
+if [ ! -d /vendor/firmware_mnt/image ]; then
+    log "eSE firmware image directory missing"
+    exit 1
+fi
+
+# vendor_dlkm is for modules, not a prerequisite for these userspace HALs.
+# TWRP's module loader manages it separately.
+setprop twrp.stock_vendor_mounted 1
+log "stock vendor, odm and eSE firmware ready for slot $slot_suffix"
