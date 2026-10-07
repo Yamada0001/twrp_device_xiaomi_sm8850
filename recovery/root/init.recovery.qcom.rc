@@ -101,8 +101,6 @@ on property:twrp.stock_vendor_mounted=1 && property:ro.twrp.weaver=nxp
     start vendor.qseecomd
     start vendor.keymint
     start vendor.secure_element
-
-on property:init.svc.vendor.keymint=running && property:twrp.stock_vendor_mounted=1 && property:ro.twrp.weaver=nxp
     start odm.weaver_nxp
 
 on property:twrp.stock_vendor_mounted=1 && property:ro.twrp.weaver=thales

@@ -68,6 +68,10 @@ case "$variant" in
     ;;
 esac
 
+# TWRP 3.7's legacy crypto probe reads this property before requesting
+# Weaver data. Qualcomm KeyMint on SM8850 implements KeyMint 4.
+setprop keymaster_ver 4
+
 #-------------------------------------------------
 # Common configuration
 #-------------------------------------------------
