@@ -36,7 +36,8 @@ are retained: differing stock UIDs alone do not prove an access-control failure.
 ## Changes
 
 * Mount stock vendor/odm and the eSE firmware path read-only before publishing
-  readiness. Remove vendor_dlkm as a prerequisite for userspace crypto services.
+  readiness. On NXP devices, mount stock vendor_dlkm and load nxp-nci when
+  /dev/nq-nci is absent; do not publish readiness if either step fails.
 * Start qseecomd after those mounts, then KeyMint/SE/Weaver when its listener
   readiness property is true. Property actions do not block init waiting for a
   failing service. KeyMint is disabled for implicit class startup, explicitly
@@ -59,17 +60,59 @@ invalid slots and lengths, incorrect keys and throttling with no read retry.
 The packed-format tests cover nonzero/multibyte slots and malformed files.
 The production GCM helper passes an AES-256-GCM known-answer vector and rejects
 altered IV/ciphertext/tag/key and truncated input, using real OpenSSL.
-Eight shell tests execute the production mount script with sandboxed paths and
-fake mounts. RC command names/argument counts are checked against selected init
-source; framework VINTF duplicates and XML syntax are checked as well.
+Fifteen shell tests execute the production mount script with sandboxed paths,
+fake mounts and module loading. RC command names/argument counts are checked
+against selected init source; framework VINTF duplicates and XML syntax are
+checked as well.
 
-These checks are not an Android build or an on-device Binder/eSE integration
-test. No full recovery image has been built or booted during this audit. No
-successful PIN-to-CE unlock has been observed. Firmware compatibility, eSE
-applet access and any vendor-specific Android 17 synthetic-password extensions
-remain runtime validation requirements. No phone partitions were written.
+The October 7 host checks alone did not establish on-device decryption. The
+October 10 device validation below provides subsequent runtime evidence. No
+phone partitions have been written during this repair; reboot persistence of
+the patched image still requires flashing and boot validation.
 
 Useful success evidence is: source revision file matches the release,
 `Weaver: configuration ready`, successful authenticated blob unwrap, and
 `User 0 Decrypted Successfully!` with accessible CE files. Do not infer success
 from service PIDs, a successful build, or a clean `git diff --check` alone.
+
+## Connected-device validation (2026-10-10)
+
+The connected byron phone booted recovery with device-tree revision `923f0e1`,
+manifest `719b741` and vold `31534de`. Metadata decryption succeeded, but the
+Weaver configuration query returned `Failed to retrieve slots info` before any
+PIN-bearing read. Running HAL processes did not establish usable eSE access.
+
+The boot lacked `/dev/nq-nci`. The live device tree identifies `qcom,sn-nci`,
+and its installed `vendor_dlkm_a` contains the matching `nxp-nci.ko`. Loading
+that module created the node and changed the HAL result from an unknown eSE
+vendor to a detected chip. The QTI TA then opened successfully from stock
+`/vendor/firmware_mnt/image`.
+
+Mounting stock ODM hid `/odm/bin/mount-stock-vendor.sh`, making subsequent
+repair requests exit 127. The helper now lives in `/system/bin`, outside both
+stock mounts. Starting the HALs after stock vendor mounts also selected stock
+`libbinder.so` alongside recovery `libbinder_ndk.so` and aborted registration
+with status -129. Both NXP HALs now preload recovery `libbinder.so`.
+
+The user confirmed that entering the correct PIN successfully decrypted after
+the initial live driver/mount/Binder repair. Rebooting the unchanged recovery
+partition lost that temporary repair and reproduced the absent device node.
+The new mount helper was then executed on-device, and HAL restart wrappers
+applied the exact `LD_PRELOAD` value planned for init. The read-only probe
+`tests/weaver_config_probe.c` returned:
+
+```
+Weaver configuration ready: slots=64 keySize=16 valueSize=16
+```
+
+That probe invokes only `IWeaver.getConfig`; it does not call credential `read`
+or destructive `write`. It was compiled with Android NDK 28.2 for arm64 API 35.
+The recovery partition was backed up and a candidate image was repacked with
+the four corrected files, deleting the old ODM helper. All 1308 cpio entries
+were compared; exactly those five paths differ, with unrelated contents and
+metadata preserved. Header fields were checked. Magiskboot retained the old
+AVB hash descriptor, so the unsigned footer was regenerated with the original
+salt, partition size, flags, rollback index and properties. Avbtool verified
+the resulting recovery SHA-256 descriptor. The original partition remains
+unchanged. The candidate has not yet been booted, so its startup ordering and
+PIN unlock after a fresh recovery boot remain to be verified.

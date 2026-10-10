@@ -3,5 +3,7 @@ service odm.weaver_nxp /odm/bin/hw/android.hardware.weaver-service.nxp-qti
     user root
     group root
     setenv LD_LIBRARY_PATH /vendor/lib64:/vendor/lib64/hw:/system/lib64:/sbin:/odm/lib64
+    # Stock libbinder must not replace the recovery NDK Binder runtime.
+    setenv LD_PRELOAD /system/lib64/libbinder.so
     disabled
     seclabel u:r:recovery:s0

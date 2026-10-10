@@ -1,7 +1,7 @@
 #!/system/bin/sh
 
-# Wait for logical mapper nodes, then mount the stock runtime needed by
-# KeyMint and NXP Weaver.
+# Wait for logical mapper nodes, then mount the stock crypto runtime needed
+# by KeyMint and NXP Weaver.
 set -u
 
 log_file="/tmp/recovery.log"
@@ -78,7 +78,22 @@ if [ ! -d /vendor/firmware_mnt/image ]; then
     exit 1
 fi
 
-# vendor_dlkm is for modules, not a prerequisite for these userspace HALs.
-# TWRP's module loader manages it separately.
+if [ "$(getprop ro.twrp.weaver)" = "nxp" ] && [ ! -e /dev/nq-nci ]; then
+    # The eSE HAL detects and powers the chip through this NFC driver.
+    # Use the installed OS modules, matching the vendor_boot kernel.
+    if ! mount_logical "vendor_dlkm${slot_suffix}" /vendor_dlkm; then
+        log "stock vendor_dlkm unavailable for the NXP eSE driver"
+        exit 1
+    fi
+    if ! modprobe -d /vendor/lib/modules nxp-nci; then
+        log "failed to load the stock nxp-nci module"
+        exit 1
+    fi
+    if ! wait_for_node /dev/nq-nci; then
+        log "nxp-nci loaded but /dev/nq-nci did not appear"
+        exit 1
+    fi
+fi
+
 setprop twrp.stock_vendor_mounted 1
-log "stock vendor, odm and eSE firmware ready for slot $slot_suffix"
+log "stock vendor, odm, eSE firmware and driver ready for slot $slot_suffix"

@@ -120,7 +120,7 @@ on property:twrp.variant.files_copied=1 && property:twrp.modules.loaded=true
     # The Synaptics driver and firmware must be ready before touch_report probes.
     start odm.touch_report
 
-service twrp.mount-stock-vendor /system/bin/sh /odm/bin/mount-stock-vendor.sh
+service twrp.mount-stock-vendor /system/bin/sh /system/bin/mount-stock-vendor.sh
     class core
     user root
     group root

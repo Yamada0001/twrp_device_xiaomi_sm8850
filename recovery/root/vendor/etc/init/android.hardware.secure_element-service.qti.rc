@@ -6,4 +6,6 @@ service vendor.secure_element /vendor/bin/hw/android.hardware.secure_element-ser
     user root
     group nfc root
     setenv LD_LIBRARY_PATH /vendor/lib64:/vendor/lib64/hw:/system/lib64:/sbin:/odm/lib64
+    # Keep libbinder compatible with recovery's libbinder_ndk after vendor mounts.
+    setenv LD_PRELOAD /system/lib64/libbinder.so
     seclabel u:r:recovery:s0
