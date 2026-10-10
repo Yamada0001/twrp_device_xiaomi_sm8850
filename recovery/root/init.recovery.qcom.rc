@@ -116,7 +116,7 @@ on property:ro.twrp.unsupported_device=1
     setprop ro.twrp.device_version "Unsupported device"
     setprop ro.twrp.unsupported_message "This recovery supports byron and popsicle only"
 
-on property:twrp.variant.files_copied=1 && property:twrp.modules.loaded=true
+on property:twrp.variant.files_copied=1 && property:twrp.modules.loaded=true && property:twrp.stock_vendor_mounted=1
     # The Synaptics driver and firmware must be ready before touch_report probes.
     start odm.touch_report
 

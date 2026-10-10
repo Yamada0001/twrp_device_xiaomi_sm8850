@@ -56,6 +56,37 @@ esac
 
 # Clear stale readiness before repairing mounts after TWRP's vendor probe.
 setprop twrp.stock_vendor_mounted 0
+
+# Setup_Fstab_Partitions writes this after its module/vendor probes and before
+# requesting metadata decryption. The ramdisk has no /etc/fstab at boot.
+if ! wait_for_node /etc/fstab; then
+    log "TWRP partition probe did not finish"
+    exit 1
+fi
+
+if [ "$(getprop ro.twrp.weaver)" = "nxp" ] && [ ! -e /dev/nq-nci ]; then
+    # TWRP replaces /vendor/lib/modules while loading touch drivers. Stock
+    # modules.dep also contains absolute paths there. Keep this module outside
+    # both of those temporary mounts and use its already-loaded dependency.
+    module_mount=/mnt/twrp-vendor-dlkm
+    if ! mount_logical "vendor_dlkm${slot_suffix}" "$module_mount"; then
+        log "stock vendor_dlkm unavailable for the NXP eSE driver"
+        exit 1
+    fi
+    if ! wait_for_node /sys/module/smcinvoke_dlkm; then
+        log "smcinvoke_dlkm dependency missing for the NXP eSE driver"
+        exit 1
+    fi
+    if ! insmod "$module_mount/lib/modules/nxp-nci.ko" >> "$log_file" 2>&1; then
+        log "failed to load the stock nxp-nci module"
+        exit 1
+    fi
+    if ! wait_for_node /dev/nq-nci; then
+        log "nxp-nci loaded but /dev/nq-nci did not appear"
+        exit 1
+    fi
+fi
+
 if ! mount_logical "vendor${slot_suffix}" /vendor ||
    ! mount_logical "odm${slot_suffix}" /odm; then
     log "stock vendor/odm unavailable for slot $slot_suffix"
@@ -65,7 +96,9 @@ fi
 # The QTI Secure Element binary loads its TA from this exact stock path.
 # /firmware alone is insufficient. The directory already exists in stock vendor.
 firmware_node="/dev/block/bootdevice/by-name/modem${slot_suffix}"
-if ! grep -q '[[:space:]]/vendor/firmware_mnt[[:space:]]' /proc/mounts; then
+if ! grep -q '[[:space:]]/vendor/firmware_mnt[[:space:]]' /proc/mounts ||
+   [ ! -d /vendor/firmware_mnt/image ]; then
+    # A new parent /vendor mount can hide an older child still in /proc/mounts.
     if ! wait_for_node "$firmware_node" ||
        ! mount -t vfat -o ro,uid=1000,gid=1000,dmask=227,fmask=337 \
            "$firmware_node" /vendor/firmware_mnt; then
@@ -76,23 +109,6 @@ fi
 if [ ! -d /vendor/firmware_mnt/image ]; then
     log "eSE firmware image directory missing"
     exit 1
-fi
-
-if [ "$(getprop ro.twrp.weaver)" = "nxp" ] && [ ! -e /dev/nq-nci ]; then
-    # The eSE HAL detects and powers the chip through this NFC driver.
-    # Use the installed OS modules, matching the vendor_boot kernel.
-    if ! mount_logical "vendor_dlkm${slot_suffix}" /vendor_dlkm; then
-        log "stock vendor_dlkm unavailable for the NXP eSE driver"
-        exit 1
-    fi
-    if ! modprobe -d /vendor/lib/modules nxp-nci; then
-        log "failed to load the stock nxp-nci module"
-        exit 1
-    fi
-    if ! wait_for_node /dev/nq-nci; then
-        log "nxp-nci loaded but /dev/nq-nci did not appear"
-        exit 1
-    fi
 fi
 
 setprop twrp.stock_vendor_mounted 1

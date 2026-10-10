@@ -4,4 +4,5 @@ service vendor.keymint /vendor/bin/hw/android.hardware.security.onekeymint-servi
     group root drmrpc
     disabled
     setenv LD_LIBRARY_PATH /vendor/lib64:/vendor/lib64/hw:/system/lib64:/sbin:/odm/lib64
+    setenv LD_PRELOAD /system/lib64/libbinder.so
     seclabel u:r:recovery:s0
